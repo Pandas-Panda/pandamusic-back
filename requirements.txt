@@ -1,0 +1,9 @@
+flask
+psycopg2-binary
+yt-dlp
+requests
+PyJWT
+firebase-admin
+razorpay
+python-dotenv
+gunicorn
