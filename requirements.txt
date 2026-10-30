@@ -7,3 +7,4 @@ firebase-admin
 razorpay
 python-dotenv
 gunicorn
+flask-cors

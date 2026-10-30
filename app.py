@@ -3,6 +3,7 @@ import os
 from flask import Flask, jsonify, send_file
 import firebase_admin
 from firebase_admin import credentials
+from flask_cors import CORS  # ← add this
 
 from config import FIREBASE_CREDENTIALS_JSON
 from routes.auth         import auth_bp
@@ -13,6 +14,10 @@ from routes.games        import games_bp
 from routes.stats        import stats_bp
 
 app = Flask(__name__)
+CORS(app, origins=[
+    "https://pandamusicforpandas.netlify.app",
+    "https://pandauniverse.netlify.app"
+])
 
 # ─── Firebase Init ───────────────────────────────────────────────────
 if FIREBASE_CREDENTIALS_JSON:
