@@ -8,3 +8,4 @@ razorpay
 python-dotenv
 gunicorn
 flask-cors
+bcrypt

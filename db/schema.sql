@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
     email                TEXT UNIQUE NOT NULL,
     referral_code        TEXT UNIQUE,
     referred_by          TEXT,                          -- referral code used at signup
+    password_hash        TEXT,
+    email_verified       BOOLEAN DEFAULT FALSE,
     trial_start_date     TIMESTAMP DEFAULT NOW(),
     subscription_active  BOOLEAN DEFAULT FALSE,
     subscription_expiry  TIMESTAMP,
@@ -24,6 +26,9 @@ CREATE TABLE IF NOT EXISTS magic_links (
     token      TEXT UNIQUE NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     used       BOOLEAN DEFAULT FALSE,
+    name                 TEXT,
+    password_hash        TEXT,
+    referral_code_used   TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 

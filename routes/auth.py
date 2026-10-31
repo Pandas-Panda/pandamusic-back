@@ -5,6 +5,7 @@ from utils.jwt_helper import generate_access_token, generate_refresh_token, veri
 from utils.auth_middleware import require_jwt
 from utils.referral_helper import generate_referral_code
 from config import MAX_DEVICES
+import bcrypt
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -13,10 +14,20 @@ auth_bp = Blueprint('auth', __name__)
 def send_magic_link_route():
     conn = cur = None
     try:
-        data  = request.get_json()
-        email = (data.get('email') or '').strip().lower()
+        data          = request.get_json()
+        email         = (data.get('email') or '').strip().lower()
+        name          = (data.get('name') or '').strip()
+        password      = (data.get('password') or '').strip()
+        referral_code = (data.get('referral_code') or '').strip().upper()
+
         if not email:
             return jsonify({'success': False, 'error': 'Email required'}), 400
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        if not password or len(password) < 6:
+            return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         token  = generate_magic_token()
         expiry = get_expiry()
@@ -24,12 +35,12 @@ def send_magic_link_route():
         conn = get_db_conn()
         cur  = conn.cursor()
 
-        # Invalidate any previous unused links for this email
         cur.execute("UPDATE magic_links SET used = TRUE WHERE email = %s AND used = FALSE", (email,))
 
         cur.execute(
-            "INSERT INTO magic_links (email, token, expires_at) VALUES (%s, %s, %s)",
-            (email, token, expiry)
+            """INSERT INTO magic_links (email, token, expires_at, name, password_hash, referral_code_used)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (email, token, expiry, name, password_hash, referral_code or None)
         )
         conn.commit()
 
@@ -43,7 +54,6 @@ def send_magic_link_route():
     finally:
         if cur: cur.close()
         if conn: conn.close()
-
 
 # ─── Verify Magic Link Token ─────────────────────────────────────────
 @auth_bp.route('/auth/verify-magic-link', methods=['GET'])
@@ -90,30 +100,33 @@ def verify_magic_link():
 
         if not user:
             is_new_user   = True
-            referral_code = generate_referral_code()
+            # Pull name, password_hash, referral_code_used from the magic_link row
             cur.execute(
-                "INSERT INTO users (email, referral_code) VALUES (%s, %s) RETURNING id, name, referral_code",
-                (email, referral_code)
+                "SELECT name, password_hash, referral_code_used FROM magic_links WHERE token = %s",
+                (token,)
+            )
+            link_meta = cur.fetchone()
+            reg_name          = link_meta[0] if link_meta else None
+            reg_password_hash = link_meta[1] if link_meta else None
+            reg_referral_used = link_meta[2] if link_meta else None
+
+            new_referral_code = generate_referral_code()
+            cur.execute(
+                """INSERT INTO users (email, name, password_hash, referral_code, referred_by)
+                   VALUES (%s, %s, %s, %s, %s)
+                   RETURNING id, name, referral_code""",
+                (email, reg_name, reg_password_hash, new_referral_code, reg_referral_used)
             )
             user = cur.fetchone()
 
+                # Mark email as verified
+        cur.execute("UPDATE users SET email_verified = TRUE WHERE email = %s", (email,))
         conn.commit()
 
-        user_id, name, referral_code = user
-        access_token  = generate_access_token(user_id, email)
-        refresh_token = generate_refresh_token(user_id)
-
+        # Redirect to app login screen via deep link
         return jsonify({
-            'success':      True,
-            'token':        access_token,
-            'refresh_token': refresh_token,
-            'is_new_user':  is_new_user,
-            'user': {
-                'id':            user_id,
-                'email':         email,
-                'name':          name,
-                'referral_code': referral_code
-            }
+            'success': True,
+            'deep_link': f"pandamusic://verified?email={email}"
         })
 
     except Exception as e:
@@ -268,6 +281,60 @@ def list_devices():
         return jsonify({'success': True, 'devices': devices})
 
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if cur: cur.close()
+        if conn: conn.close()
+
+# ─── Login (email + password) ────────────────────────────────────────
+@auth_bp.route('/auth/login', methods=['POST'])
+def login():
+    conn = cur = None
+    try:
+        data     = request.get_json()
+        email    = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email and password required'}), 400
+
+        conn = get_db_conn()
+        cur  = conn.cursor()
+
+        cur.execute(
+            "SELECT id, name, referral_code, password_hash, email_verified FROM users WHERE email = %s",
+            (email,)
+        )
+        user = cur.fetchone()
+
+        if not user:
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+
+        user_id, name, referral_code, password_hash, email_verified = user
+
+        if not email_verified:
+            return jsonify({'success': False, 'error': 'Please verify your email first'}), 403
+
+        if not password_hash or not bcrypt.checkpw(password.encode(), password_hash.encode()):
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+
+        access_token  = generate_access_token(user_id, email)
+        refresh_token = generate_refresh_token(user_id)
+
+        return jsonify({
+            'success':       True,
+            'token':         access_token,
+            'refresh_token': refresh_token,
+            'user': {
+                'id':            user_id,
+                'email':         email,
+                'name':          name,
+                'referral_code': referral_code
+            }
+        })
+
+    except Exception as e:
+        print(f"LOGIN ERROR: {e}", flush=True)
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if cur: cur.close()

@@ -17,16 +17,16 @@ def send_magic_link(email, token):
         <div style="text-align: center; margin-bottom: 24px;">
             <h1 style="color: #E24B4A; font-size: 28px; margin: 0;">🐼 PandaMusic</h1>
         </div>
-        <h2 style="font-size: 20px; margin-bottom: 8px;">Sign in to PandaMusic</h2>
+        <h2 style="font-size: 20px; margin-bottom: 8px;">Verify your email</h2>
         <p style="color: #888888; margin-bottom: 24px;">
-            Click the button below to sign in. This link expires in {MAGIC_LINK_EXPIRY_MINUTES} minutes.
+            Click the button below to verify your email and activate your account. This link expires in {MAGIC_LINK_EXPIRY_MINUTES} minutes.
         </p>
         <div style="text-align: center; margin-bottom: 24px;">
             <a href="{magic_url}"
                style="background: #E24B4A; color: #ffffff; padding: 14px 32px;
                       border-radius: 8px; text-decoration: none; font-size: 16px;
                       font-weight: bold; display: inline-block;">
-                Sign In to PandaMusic
+                Verify Email
             </a>
         </div>
         <p style="color: #555555; font-size: 13px; text-align: center;">
@@ -38,7 +38,7 @@ def send_magic_link(email, token):
     payload = {
         "sender": {"name": BREVO_SENDER_NAME, "email": BREVO_SENDER_EMAIL},
         "to": [{"email": email}],
-        "subject": "🐼 Sign in to PandaMusic",
+        "subject": "🐼 Verify your PandaMusic account",
         "htmlContent": html_content
     }
 
