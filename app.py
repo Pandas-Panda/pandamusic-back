@@ -31,7 +31,7 @@ if FIREBASE_CREDENTIALS_JSON:
 
 # ─── Register Blueprints ─────────────────────────────────────────────
 app.register_blueprint(auth_bp)
-app.register_blueprint(music_bp)
+app.register_blueprint(music_bp, url_prefix='/music')
 app.register_blueprint(user_bp)
 app.register_blueprint(subscription_bp)
 app.register_blueprint(games_bp)
