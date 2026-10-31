@@ -43,14 +43,9 @@ def search():
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'extract_flat': 'in_playlist',
             'skip_download': True,
-            'http_headers': {'User-Agent': random.choice(USER_AGENTS)},
-            'cookiefile': 'cookies.txt',
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android'],
-                }
-            },
+            'http_headers': {'User-Agent': random.choice(USER_AGENTS)}
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -96,12 +91,6 @@ def extract():
         'no_warnings': True,
         'skip_download': True,
         'http_headers': {'User-Agent': random.choice(USER_AGENTS)},
-        'cookiefile': 'cookies.txt',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android'],
-            }
-        },
     }
 
     try:
