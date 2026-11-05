@@ -3,7 +3,9 @@ import os
 from flask import Flask, jsonify, send_file
 import firebase_admin
 from firebase_admin import credentials
-from flask_cors import CORS  # ← add this
+from flask_cors import CORS  
+import psycopg2
+from config import DATABASE_URL
 
 from config import FIREBASE_CREDENTIALS_JSON
 from routes.auth         import auth_bp
@@ -40,7 +42,24 @@ app.register_blueprint(stats_bp)
 # ─── Core Routes ─────────────────────────────────────────────────────
 @app.route('/ping', methods=['GET'])
 def ping():
-    return jsonify({'status': 'alive'}), 200
+    try:
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'status': 'alive',
+            'database': 'alive'
+        }), 200
+
+    except Exception as e:
+        print(f"Database ping failed: {e}", flush=True)
+        return jsonify({
+            'status': 'alive',
+            'database': 'error'
+        }), 200
 
 
 APP_CONFIG = {
